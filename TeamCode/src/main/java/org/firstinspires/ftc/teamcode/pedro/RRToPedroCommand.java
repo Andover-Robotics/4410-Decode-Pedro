@@ -25,7 +25,7 @@ public class RRToPedroCommand implements Command {
 
     @Override
     public void execute() {
-        boolean done = rrAction.run(new TelemetryPacket());
+        done = rrAction.run(new TelemetryPacket());
     }
 
     @Override
