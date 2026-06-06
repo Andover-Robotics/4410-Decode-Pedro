@@ -1,6 +1,5 @@
 package org.firstinspires.ftc.teamcode.auto;
 
-import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.ivy.Scheduler;
@@ -8,67 +7,70 @@ import com.pedropathing.ivy.groups.Groups;
 import com.pedropathing.ivy.pedro.PedroCommands;
 import com.pedropathing.paths.PathChain;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 
 @Autonomous(name = "Square Auto")
-public class SquareAuto extends OpMode {
-    private Follower follower;
+public class SquareAuto extends AbstractAuto {
+    private PathChain line1;
+    private PathChain line2;
+    private PathChain line3;
+    private PathChain line4;
 
-    PathChain line1;
-    PathChain line2;
-    PathChain line3;
-    PathChain line4;
+    public static Pose STARTING_POSE = new Pose(72.000, 72.000, Math.toRadians(0));
+    public static Pose FIRST_CORNER = new Pose(72.000, 72.000);
+    public static Pose SECOND_CORNER = new Pose(24.000, 72.000);
+    public static Pose THIRD_CORNER = new Pose(24.000, 120.000);
+    public static Pose FOURTH_CORNER = new Pose(72.000, 120.000);;
 
-    public void constructPaths() {
+    @Override
+    protected Pose getStartingPose() {
+        return STARTING_POSE;
+    }
+
+    public void initPaths() {
         line1 = follower.pathBuilder()
                 .addPath(
                         new BezierLine(
-                                new Pose(72.000, 72.000),
-                                new Pose(24.000, 72.000)
+                                FIRST_CORNER,
+                                SECOND_CORNER
                         )
                 )
-                .setTangentHeadingInterpolation()
+                .setConstantHeadingInterpolation(Math.toRadians(0))
                 .build();
 
         line2 = follower.pathBuilder()
                 .addPath(
                         new BezierLine(
-                                new Pose(24.000, 72.000),
-                                new Pose(24.000, 120.000)
+                                SECOND_CORNER,
+                                THIRD_CORNER
                         )
                 )
-                .setTangentHeadingInterpolation()
+                .setConstantHeadingInterpolation(Math.toRadians(0))
                 .build();
 
         line3 = follower.pathBuilder()
                 .addPath(
                         new BezierLine(
-                                new Pose(24.000, 120.000),
-                                new Pose(72.000, 120.000)
+                                THIRD_CORNER,
+                                FOURTH_CORNER
                         )
                 )
-                .setTangentHeadingInterpolation()
+                .setConstantHeadingInterpolation(Math.toRadians(0))
                 .build();
 
         line4 = follower.pathBuilder()
                 .addPath(
                         new BezierLine(
-                                new Pose(72.000, 120.000),
-                                new Pose(72.000, 72.000)
+                                FOURTH_CORNER,
+                                FIRST_CORNER
                         )
                 )
-                .setTangentHeadingInterpolation()
+                .setConstantHeadingInterpolation(Math.toRadians(0))
                 .build();
     }
 
     @Override
-    public void init() {
-        follower = Constants.createFollower(hardwareMap);
-        follower.setPose(new Pose(72, 72));
-
-        Scheduler.reset();
-
-        constructPaths();
+    protected void initAuto() {
+        initPaths();
 
         Scheduler.schedule(
                 Groups.sequential(
@@ -78,16 +80,5 @@ public class SquareAuto extends OpMode {
                         PedroCommands.follow(follower, line4)
                 )
         );
-    }
-
-    @Override
-    public void loop() {
-        Scheduler.execute();
-        follower.update();
-    }
-
-    @Override
-    public void stop() {
-        Scheduler.reset();
     }
 }
