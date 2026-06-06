@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.auto;
+package org.firstinspires.ftc.teamcode.pedro;
 
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
