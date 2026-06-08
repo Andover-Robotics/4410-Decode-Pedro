@@ -1,5 +1,9 @@
 package org.firstinspires.ftc.teamcode.teleop.subsystems;
 
+import static com.pedropathing.ivy.commands.Commands.instant;
+import static com.pedropathing.ivy.commands.Commands.waitMs;
+import static com.pedropathing.ivy.groups.Groups.sequential;
+
 import androidx.annotation.NonNull;
 
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
@@ -10,13 +14,21 @@ import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.acmerobotics.roadrunner.SequentialAction;
 import com.acmerobotics.roadrunner.SleepAction;
 import com.acmerobotics.roadrunner.Vector2d;
+import com.pedropathing.follower.Follower;
+import com.pedropathing.geometry.CoordinateSystem;
+import com.pedropathing.geometry.Pose;
+import com.pedropathing.ivy.CommandBuilder;
+import com.pedropathing.ivy.commands.Commands;
+import com.pedropathing.ivy.groups.Groups;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 
 import com.acmerobotics.dashboard.config.Config;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
+import org.firstinspires.ftc.teamcode.auto.Pos;
 import org.firstinspires.ftc.teamcode.auto.tuning.MecanumDrive;
+import com.pedropathing.localization.Localizer;
 
 @Config
 public class Bot {
@@ -30,15 +42,15 @@ public class Bot {
     public Limelight limelight;
 //    public static VoltageSensor voltageSensor;
 
-    public static Pose2d storedPose = new Pose2d(0, 0, 0);
-    public static Pose2d resetPose = new Pose2d(-63, -61, Math.toRadians(-90));
-    public static Vector2d gateResetPose = new Vector2d(9, 54);
-    public static Vector2d obeliskPose = new Vector2d(66, 0);
-    public static Vector2d farRampPose = new Vector2d(33, 80);
-    public static Vector2d hpRampPose = new Vector2d(38, 82);
-    public static Vector2d goalPose = new Vector2d(62, 61); //initializes with blue, switches based on alliance
-    public static Vector2d targetPose = goalPose;
-    public Pose2d positionLockPose;
+    public static Pose storedPose = new Pose(0, 0, 0);
+    public static Pose resetPose = new Pose(-63, -61, Math.toRadians(-90));
+    public static Pose gateResetPose = new Pose(9, 54);
+    public static Pose obeliskPose = new Pose(66, 0);
+    public static Pose farRampPose = new Pose(33, 80);
+    public static Pose hpRampPose = new Pose(38, 82);
+    public static Pose goalPose = new Pose(62, 61); //initializes with blue, switches based on alliance
+    public static Pose targetPose = goalPose;
+    public Pose positionLockPose;
     public boolean shooting = false, sensorIntaking = true;
     private boolean screenPeriodicEnabled = true;
     public boolean actionsRunning = false;
@@ -53,6 +65,7 @@ public class Bot {
     private double periodicTotalMs = 0;
 
     public static MecanumDrive drive;
+    public static Follower follower;
     public static double headingLockGain = 4.5, positionLockGain = 4.5;
     public boolean positionLockEnabled = false;
 
@@ -87,7 +100,7 @@ public class Bot {
     private Bot(OpMode opMode) {
         this.opMode = opMode;
 
-        drive = new MecanumDrive(opMode.hardwareMap, storedPose);
+       // drive = new MecanumDrive(opMode.hardwareMap, storedPose);
         limelight = new Limelight(opMode);
         turret = new Turret(opMode, drive.srsHubs);
         intake = new Intake(opMode);
@@ -128,20 +141,20 @@ public class Bot {
 
     public static void updatePoses() {
         if (isRed()) {
-            goalPose = new Vector2d(goalPose.x, -1 * Math.abs(goalPose.y));
-            obeliskPose = new Vector2d(obeliskPose.x, -1 * Math.abs(obeliskPose.y));
-            resetPose = new Pose2d(resetPose.position.x, Math.abs(resetPose.position.y), Math.abs(resetPose.heading.log()));
-            farRampPose = new Vector2d(farRampPose.x, -1 * Math.abs(farRampPose.y));
-            gateResetPose = new Vector2d(gateResetPose.x, -1 * Math.abs(gateResetPose.y));
-            hpRampPose = new Vector2d(hpRampPose.x, -1 * Math.abs(hpRampPose.y));
+            goalPose = new Pose(goalPose.getX(), -1 * Math.abs(goalPose.getY()));
+            obeliskPose = new Pose(obeliskPose.getX(), -1 * Math.abs(obeliskPose.getY()));
+            resetPose = new Pose(resetPose.getX(), Math.abs(resetPose.getY()), Math.abs(resetPose.getHeading()));
+            farRampPose = new Pose(farRampPose.getX(), -1 * Math.abs(farRampPose.getY()));
+            gateResetPose = new Pose(gateResetPose.getX(), -1 * Math.abs(gateResetPose.getY()));
+            hpRampPose = new Pose(hpRampPose.getX(), -1 * Math.abs(hpRampPose.getY()));
 
         } else {
-            goalPose = new Vector2d(goalPose.x, Math.abs(goalPose.y));
-            obeliskPose = new Vector2d(obeliskPose.x, Math.abs(obeliskPose.y));
-            resetPose = new Pose2d(resetPose.position.x, -1 * Math.abs(resetPose.position.y), -1 * Math.abs(resetPose.heading.log()));
-            farRampPose = new Vector2d(farRampPose.x, Math.abs(farRampPose.y));
-            gateResetPose = new Vector2d(gateResetPose.x, Math.abs(gateResetPose.y));
-            hpRampPose = new Vector2d(hpRampPose.x, Math.abs(hpRampPose.y));
+            goalPose = new Pose(goalPose.getX(), Math.abs(goalPose.getY()));
+            obeliskPose = new Pose(obeliskPose.getX(), Math.abs(obeliskPose.getY()));
+            resetPose = new Pose(resetPose.getX(), -1 * Math.abs(resetPose.getY()), -1 * Math.abs(resetPose.getHeading()));
+            farRampPose = new Pose(farRampPose.getX(), Math.abs(farRampPose.getY()));
+            gateResetPose = new Pose(gateResetPose.getX(), Math.abs(gateResetPose.getY()));
+            hpRampPose = new Pose(hpRampPose.getX(), Math.abs(hpRampPose.getY()));
         }
         targetPose = goalPose;
     }
@@ -167,35 +180,36 @@ public class Bot {
         targetPose = farRampPose;
     }
 
-    public Action trackFarRampPose() {
-        return new InstantAction(this::setTargetFarRampPose);
+    public CommandBuilder trackFarRampPose() {
+        return Commands.instant(this::setTargetFarRampPose);
     }
 
-    public Action trackHpRampPose() {
-        return new InstantAction(this::setTargetHpRampPose);
+    public CommandBuilder trackHpRampPose() {
+        return Commands.instant(this::setTargetHpRampPose);
     }
 
-    public Action offsetMotifByRampArtifacts() {
-        return new InstantAction(() -> {
+    public CommandBuilder offsetMotifByRampArtifacts() {
+        return Commands.instant(() -> {
             int artifacts = limelight.getLastDetectedArtifacts();
             indexer.rampDetectionOffsetAutoMotifBy(artifacts);
         });
     }
 
     public void resetPose() {
-        drive.localizer.setPose(resetPose);
+        //drive.localizer.setPose(resetPose);
+        follower.setPose(resetPose);
     }
 
     public void resetXY() {
-        drive.localizer.setPose(new Pose2d(resetPose.position, drive.localizer.getPose().heading));
+        follower.setPose(new Pose(resetPose.getX(), resetPose.getY(), follower.getHeading()));
     }
 
     public void resetGateXY() {
-        drive.localizer.setPose(new Pose2d(gateResetPose, drive.localizer.getPose().heading));
+        follower.setPose(new Pose(gateResetPose.getX(), gateResetPose.getY(), follower.getHeading()));
     }
 
     public static void useStoredPose() {
-        drive.localizer.setPose(storedPose);
+        follower.setPose(storedPose);
     }
 
     public static boolean isRed() {
@@ -249,33 +263,35 @@ public class Bot {
         sensorIntaking = false;
     }
 
-    public SequentialAction clearKickerJam() {
-        actionsRunning = true;
-        return new SequentialAction(
-                new InstantAction(() -> indexer.rightTooHigh()),
-                new SleepAction(0.3),
-                new InstantAction(() -> intake.intake()),
-                new SleepAction(1.3),
-                new InstantAction(() -> indexer.rightReset()),
-                new SleepAction(0.5),
-                new InstantAction(() -> intake.reverse()),
-                new SleepAction(0.6),
+
+    public CommandBuilder clearKickerJam(){
+        return sequential(
+                instant(()->indexer.rightTooHigh()),
+                waitMs(300),
+                instant(()->intake.intake()),
+                waitMs(1300),
+                instant(() -> indexer.rightReset()),
+                waitMs(500),
+                instant(() -> intake.reverse()),
+                waitMs(600),
                 indexer.jiggleKickers(),
                 indexer.jiggleKickers(),
-                new InstantAction(() -> actionsRunning = false)
+                instant(() -> actionsRunning = false)
         );
     }
 
-    public SequentialAction clearIntakeJam() {
+
+
+    public CommandBuilder clearIntakeJam() {
         actionsRunning = true;
         unjamming = true;
 //        stopIntake();
-        return new SequentialAction(
-                new InstantAction(() -> intake.reverse()),
-                new SleepAction(0.3),
+        return Groups.sequential(
+                instant(() -> intake.reverse()),
+                waitMs(300),
                 indexer.jiggleKickers(),
-                new InstantAction(() -> unjamming = false),
-                new InstantAction(() -> actionsRunning = false)
+                instant(() -> unjamming = false),
+                instant(() -> actionsRunning = false)
         );
     }
 
@@ -306,6 +322,8 @@ public class Bot {
         intake.periodic();
         intakeMs = nanosToMillis(System.nanoTime() - sectionStartNs);
 
+        Bot.storedPose = follower.getPose();
+
         screenMs = 0;
         if (screenPeriodicEnabled) {
             sectionStartNs = System.nanoTime();
@@ -314,9 +332,9 @@ public class Bot {
         }
 
         sectionStartNs = System.nanoTime();
-        drive.updatePoseEstimate();
         drivePoseMs = nanosToMillis(System.nanoTime() - sectionStartNs);
         periodicTotalMs = nanosToMillis(System.nanoTime() - loopStartNs);
+        follower.update();
     }
 
     public void autoPeriodic() {
@@ -412,11 +430,11 @@ public class Bot {
 
     public void checkBotPose(){
         //takes dy and dx of ll pose and current bot pose, and sees if delta is >4 inches
-        Pose2d pose = storedPose;
-        Pose2d llPose = pose3D2pose2D(Limelight.llBotPose);
+        Pose pose = storedPose;
+        Pose llPose = pose3D2Pose(Limelight.llBotPose);
 
-        double dx = llPose.position.x - pose.position.x;
-        double dy = llPose.position.y-pose.position.y;
+        double dx = llPose.getX() - pose.getX();
+        double dy = llPose.getY()-pose.getY();
         if(Math.abs(dx)>=4 || Math.abs(dy)>=4){
             limelight.relocalizeBotPose();
         }
@@ -429,7 +447,7 @@ public class Bot {
 
     public void driveHeadingLock(double forwardInput, double strafeInput, double driveSpeed) {
         double targetHeading = Math.toRadians(isRed() ? -45.0 : 45.0);
-        double currentHeading = storedPose.heading.log();
+        double currentHeading = storedPose.getHeading();
         double headingError = normalizeRadians(targetHeading - currentHeading);
         double turn = headingError * headingLockGain;
 
@@ -442,28 +460,28 @@ public class Bot {
         }
         positionLockEnabled = true;
 
-        Pose2d pose = storedPose;
+        Pose pose = storedPose;
 
-        Vector2d posError = positionLockPose.position.minus(pose.position);
-        double headingError = normalizeRadians(positionLockPose.heading.log() - pose.heading.log());
+        Pose posError = positionLockPose.minus(pose);
+        double headingError = normalizeRadians(positionLockPose.getHeading() - pose.getHeading());
 
-        Vector2d translation = posError.times(positionLockGain);
+        Pose translation = posError.times(positionLockGain);
         double turn = headingError * headingLockGain;
 
         drive.setDrivePowers(
                 new PoseVelocity2d(
-                        translation,
+                        new Vector2d(posError.getX(), posError.getY()),
                         turn
                 )
         );
     }
 
-    public Action enableShooter() {
-        return new InstantAction(()-> enableShooter(true));
+    public CommandBuilder enableShooter() {
+        return instant(()-> enableShooter(true));
     }
 
-    public Action disableShooter() {
-        return new InstantAction(() -> enableShooter(false));
+    public CommandBuilder disableShooter() {
+        return instant(() -> enableShooter(false));
     }
 
     public void clearBulkCache() {
@@ -480,6 +498,9 @@ public class Bot {
             return true;
         }
     }
+    public CommandBuilder commandPeriodic(){
+        return Commands.infinite(this::autoPeriodic);
+    }
 
     private static double normalizeRadians(double angleRad) {
         return Math.atan2(Math.sin(angleRad), Math.cos(angleRad));
@@ -490,11 +511,11 @@ public class Bot {
 //        return 13;
     }
 
-    public static Pose2d pose3D2pose2D(Pose3D pose){
+    public static Pose pose3D2Pose(Pose3D pose){
         double x = pose.getPosition().toUnit(DistanceUnit.INCH).x;
         double y = pose.getPosition().toUnit(DistanceUnit.INCH).y;
         double heading = Math.toRadians(pose.getOrientation().getYaw());
-        return new Pose2d(x,y,heading);
+        return new Pose(x,y,heading);
     }
 
     private double nanosToMillis(long nanos) {

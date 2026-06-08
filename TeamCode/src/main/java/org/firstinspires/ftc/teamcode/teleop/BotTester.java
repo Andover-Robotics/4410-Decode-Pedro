@@ -8,6 +8,7 @@ import com.acmerobotics.roadrunner.Action;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 //import com.arcrobotics.ftclib.geometry.Vector2d;
+import com.pedropathing.ivy.Scheduler;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.NormalizedRGBA;
@@ -111,15 +112,15 @@ public class BotTester extends LinearOpMode {
         if (!useStoredPose) {
             if (Bot.isFar()) {
                 if (Bot.isBlue()) {
-                    Bot.drive.localizer.setPose(Pos.initialFarBluePose);
+                    Bot.follower.setPose(Pos.initialFarBluePose);
                 } else {
-                    Bot.drive.localizer.setPose(Pos.initialFarRedPose);
+                    Bot.follower.setPose(Pos.initialFarRedPose);
                 }
             } else {
                 if (Bot.isBlue()) {
-                    Bot.drive.localizer.setPose(Pos.initialCloseBluePose);
+                    Bot.follower.setPose(Pos.initialCloseBluePose);
                 } else {
-                    Bot.drive.localizer.setPose(Pos.initialCloseRedPose);
+                    Bot.follower.setPose(Pos.initialCloseRedPose);
                 }
             }
         } else {
@@ -129,6 +130,8 @@ public class BotTester extends LinearOpMode {
         loopTimer.reset();
         bot.limelight.trackObelisk();
         bot.indexer.resetIndexer();
+
+        Scheduler.reset();
 
         while (opModeIsActive() && !isStopRequested()) {
             TelemetryPacket packet = new TelemetryPacket();
@@ -223,23 +226,23 @@ public class BotTester extends LinearOpMode {
             }
 
             if (gp1.wasJustPressed(GamepadKeys.Button.DPAD_DOWN)) {
-                runningActions.add(bot.indexer.shootRapidFire());
+                Scheduler.schedule(bot.indexer.shootRapidFire());
             }
 
             if (gp1.wasJustPressed(GamepadKeys.Button.B) && !bot.shooting && !gp1.isDown(GamepadKeys.Button.START)) {
-                runningActions.add(bot.indexer.shootLeft());
+                Scheduler.schedule(bot.indexer.shootLeft());
             }
             if (gp1.wasJustPressed(GamepadKeys.Button.X) && !bot.shooting) {
-                runningActions.add(bot.indexer.shootRight());
+                Scheduler.schedule(bot.indexer.shootRight());
             }
             if (gp1.wasJustPressed(GamepadKeys.Button.Y) && !bot.shooting) {
-                runningActions.add(bot.indexer.shootBack());
+                Scheduler.schedule(bot.indexer.shootBack());
             }
             if (gp1.wasJustPressed(GamepadKeys.Button.LEFT_BUMPER) && !bot.shooting) {
-                runningActions.add(bot.indexer.shootPurple());
+                Scheduler.schedule(bot.indexer.shootPurple());
             }
             if (gp1.wasJustPressed(GamepadKeys.Button.RIGHT_BUMPER) && !bot.shooting) {
-                runningActions.add(bot.indexer.shootGreen());
+                Scheduler.schedule(bot.indexer.shootGreen());
             }
             if (gp2.wasJustPressed(GamepadKeys.Button.RIGHT_BUMPER)) {
                 bot.turret.shooter.setHoodAngle(angle);
@@ -362,8 +365,8 @@ public class BotTester extends LinearOpMode {
 
             telemetry.addData("Loop ms", "%.1f", loopTimer.milliseconds());
             packet.fieldOverlay().setStroke("#3F51B5");
-            Drawing.drawRobot(packet.fieldOverlay(), Bot.storedPose);
-            telemetry.addData("Odom Pose", Math.round(Bot.storedPose.position.x) + " " + Math.round(Bot.storedPose.position.y) + " " + Math.round(Math.toDegrees(Bot.storedPose.heading.log())));
+            //Drawing.drawRobot(packet.fieldOverlay(), Bot.storedPose);
+            telemetry.addData("Odom Pose", Math.round(Bot.storedPose.getX()) + " " + Math.round(Bot.storedPose.getY()) + " " + Math.round(Math.toDegrees(Bot.storedPose.getHeading())));
             telemetry.addLine("=== SRSHub Sensor Cache ===");
             telemetry.addData("RR Dist (mm)", "%.1f", bot.indexer.rightHolder.getDistanceA());
             telemetry.addData("RR Hue", "%.1f", bot.indexer.rightHolder.getHueA());
@@ -437,9 +440,11 @@ public class BotTester extends LinearOpMode {
 //            telemetry.addData("Velocity", Bot.drive.localizer.update());
 
             telemetry.update();
-
+            Scheduler.execute();
 
         }
+
+        Scheduler.reset();
     }
 
     // Driving

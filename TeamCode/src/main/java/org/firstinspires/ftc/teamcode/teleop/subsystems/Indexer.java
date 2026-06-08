@@ -1,5 +1,10 @@
 package org.firstinspires.ftc.teamcode.teleop.subsystems;
 
+import static com.pedropathing.ivy.commands.Commands.instant;
+import static com.pedropathing.ivy.commands.Commands.lazy;
+import static com.pedropathing.ivy.commands.Commands.waitMs;
+import static com.pedropathing.ivy.groups.Groups.sequential;
+
 import androidx.annotation.NonNull;
 
 import com.acmerobotics.dashboard.canvas.Canvas;
@@ -10,14 +15,19 @@ import com.acmerobotics.roadrunner.InstantAction;
 import com.acmerobotics.roadrunner.SequentialAction;
 import com.acmerobotics.roadrunner.SleepAction;
 
+import com.pedropathing.ivy.CommandBuilder;
+import com.pedropathing.ivy.commands.Commands;
+import com.pedropathing.ivy.groups.Groups;
 import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.teamcode.util.SRSHub;
 
+import java.security.acl.Group;
 import java.util.*;
 import java.util.function.Supplier;
+import com.pedropathing.ivy.Command;
 
 @Config
 public class Indexer {
@@ -155,31 +165,32 @@ public class Indexer {
 
     /* ================= ACTIONS ================= */
 
-    public Action shootRight() { return rightHolder.kickResetAction(); }
-    public Action shootLeft()  { return leftHolder.kickResetAction(); }
-    public Action shootBack()  { return backHolder.kickResetAction(); }
+    public CommandBuilder shootRight() { return rightHolder.kickResetAction(); }
+    public CommandBuilder shootLeft()  { return leftHolder.kickResetAction(); }
+    public CommandBuilder shootBack()  { return backHolder.kickResetAction(); }
 
-    public Action jiggleKickers() {
-        List<Action> actions = new ArrayList<>();
+    public CommandBuilder jiggleKickers() {
+        List<CommandBuilder> actions = new ArrayList<>();
         for (Holder h : holders) {
             actions.add(h.jiggleResetAction(jiggleKickerDelta, jiggleKickerSleep));
         }
-        return new SequentialAction(actions.toArray(new Action[0]));
+        return sequential(actions.toArray(new CommandBuilder[0]));
     }
 
-    public Action resetKickersAction() {
-        List<Action> actions = new ArrayList<>();
+    public CommandBuilder resetKickersAction() {
+        List<CommandBuilder> actions = new ArrayList<>();
         for (Holder h : holders) {
             actions.add(h.resetFastAction());
         }
-        return new SequentialAction(actions.toArray(new Action[0]));
+        return sequential(actions.toArray(new CommandBuilder[0]));
     }
 
     /**
      * Rapid-fire all present holders, using rapidShootSleep between shots.
      */
-    public Action shootRapidFire() {
-        List<Action> actions = new ArrayList<>();
+
+    public CommandBuilder shootRapidFire() {
+        List<CommandBuilder> commands = new ArrayList<>();
         double sleepSeconds = Turret.getRapidShootSleep(rapidShootSleep);
         shooting = true;
 
@@ -188,22 +199,22 @@ public class Indexer {
             for (int i = 0; i < 3; i++) {
                 Holder holder = holders[rapidFireOrder[i]];
                 if (i != 2) {
-                    actions.add(holder.kickResetAction());
-                    actions.add(new SleepAction(sleepSeconds));
+                    commands.add(holder.kickResetAction());
+                    commands.add(waitMs(sleepSeconds * 1000));
                 } else {
-                    actions.add(holder.longKickResetAction());
+                    commands.add(holder.longKickResetAction());
                 }
             }
         } else {
-            actions.add(new SleepAction(0.01));
+            commands.add(waitMs(0.01*1000));
         }
 
         shooting = false;
-        return new SequentialAction(actions.toArray(new Action[0]));
+        return sequential(commands.toArray(new Command[0]));
     }
 
-    public Action shootNotRapidFire() {
-        List<Action> actions = new ArrayList<>();
+    public CommandBuilder shootNotRapidFire() {
+        List<CommandBuilder> actions = new ArrayList<>();
         shooting = true;
 
         if (!Turret.deadzone) {
@@ -212,25 +223,25 @@ public class Indexer {
                 Holder holder = holders[rapidFireOrder[i]];
                 if (i != 2) {
                     actions.add(holder.kickResetAction());
-                    actions.add(new SleepAction(notRapidSleep));
+                    actions.add(waitMs(notRapidSleep * 1000));
                 } else {
                     actions.add(holder.longKickResetAction());
                 }
             }
         } else {
-            actions.add(new SleepAction(0.01));
+            actions.add(waitMs(0.01*1000));
         }
 
         shooting = false;
-        return new SequentialAction(actions.toArray(new Action[0]));
+        return sequential(actions.toArray(new CommandBuilder[0]));
     }
 
 
     /**
      * Rapid-fire all present holders, using rapidShootSleep between shots.
      */
-    public Action shootRapidFireAutoFar() {
-        List<Action> actions = new ArrayList<>();
+    public CommandBuilder shootRapidFireAutoFar() {
+        List<CommandBuilder> actions = new ArrayList<>();
 
         Bot bot = Bot.getInstance();
         shooting = true;
@@ -243,15 +254,15 @@ public class Indexer {
                     actions.add(holder.kickResetAction());
                 } else {
                     actions.add(holder.longKickResetAction());
-                    actions.add(new InstantAction(() -> Shooter.setFullPower(false)));
+                    actions.add(instant(() -> Shooter.setFullPower(false)));
                 }
             }
         } else {
-            actions.add(new SleepAction(0.01));
+            actions.add(waitMs(10));
         }
 
         shooting = false;
-        return new SequentialAction(actions.toArray(new Action[0]));
+        return sequential(actions.toArray(new CommandBuilder[0]));
     }
 
     private int[] buildRapidFireMotifOrder(String motifPattern) {
@@ -315,32 +326,32 @@ public class Indexer {
         return rapidFireOrder;
     }
 
-    public Action shootRapidFireSensor() {
-        List<Action> actions = new ArrayList<>();
+    public CommandBuilder shootRapidFireSensor() {
+        List<CommandBuilder> actions = new ArrayList<>();
         double sleepSeconds = Turret.getRapidShootSleep(rapidShootSleep);
         for (Holder h : holders) {
             if (h.ballPresent()) {
                 actions.add(h.kickResetAction());
-                actions.add(new SleepAction(sleepSeconds));
+                actions.add(waitMs(sleepSeconds * 1000));
             }
         }
-        return new SequentialAction(actions.toArray(new Action[0]));
+        return sequential(actions.toArray(new CommandBuilder[0]));
     }
 
     /**
      * Shoots ONE green if any holder currently contains GREEN, otherwise no-op.
      */
-    public Action shootGreen() {
+    public CommandBuilder shootGreen() {
         Holder h = findFirstHolderWithColor("GREEN");
-        return (h == null) ? new InstantAction(() -> {}) : h.kickResetAction();
+        return (h == null) ? instant(() -> {}) : h.kickResetAction();
     }
 
     /**
      * Shoots ONE purple if any holder currently contains PURPLE, otherwise no-op.
      */
-    public Action shootPurple() {
+    public CommandBuilder shootPurple() {
         Holder h = findFirstHolderWithColor("PURPLE");
-        return (h == null) ? new InstantAction(() -> {}) : h.kickResetAction();
+        return (h == null) ? instant(() -> {}) : h.kickResetAction();
     }
 
     private Holder findFirstHolderWithColor(String color) {
@@ -358,11 +369,11 @@ public class Indexer {
 
     /* ================= MOTIF SHOOT (SLOW SLEEP) ================= */
 
-    public Action shootMotif() {
+    public CommandBuilder shootMotif() {
         return buildMotifActionSupplier(this::getMotifPattern, false);
     }
 
-    public Action shootMotifAuto() {
+    public CommandBuilder shootMotifAuto() {
         return buildMotifActionSupplier(this::getAutoMotifPattern, true);
     }
 
@@ -371,36 +382,19 @@ public class Indexer {
      * Pattern-matched shots happen first, then any leftover holders are kicked
      * to clear possible ramp-detection artifacts.
      */
-    public Action shootMotifAutoClearArtifacts() {
+    public CommandBuilder shootMotifAutoClearArtifacts() {
         return buildMotifActionSupplier(this::getAutoMotifPattern, false, true);
     }
 
-    private Action buildMotifActionSupplier(Supplier<String> motifSupplier, boolean updateAutoMotif) {
+    private CommandBuilder buildMotifActionSupplier(Supplier<String> motifSupplier, boolean updateAutoMotif) {
         return buildMotifActionSupplier(motifSupplier, updateAutoMotif, false);
     }
 
-    private Action buildMotifActionSupplier(Supplier<String> motifSupplier, boolean updateAutoMotif, boolean kickAllSlots) {
-        return new Action() {
-            private Action builtAction;
-
-            @Override
-            public boolean run(@NonNull TelemetryPacket t) {
-                if (builtAction == null) {
-                    builtAction = buildMotifAction(motifSupplier.get(), updateAutoMotif, kickAllSlots);
-                }
-                return builtAction.run(t);
-            }
-
-            @Override
-            public void preview(@NonNull Canvas canvas) {
-                if (builtAction != null) {
-                    builtAction.preview(canvas);
-                }
-            }
-        };
+    private CommandBuilder buildMotifActionSupplier(Supplier<String> motifSupplier, boolean updateAutoMotif, boolean kickAllSlots) {
+        return lazy(() -> buildMotifAction(motifSupplier.get(), updateAutoMotif, kickAllSlots));
     }
 
-    private Action buildMotifAction(String motifPattern, boolean updateAutoMotif, boolean kickAllSlots) {
+    private CommandBuilder buildMotifAction(String motifPattern, boolean updateAutoMotif, boolean kickAllSlots) {
 
         List<Integer> purple = new ArrayList<>();
         List<Integer> green = new ArrayList<>();
@@ -416,7 +410,7 @@ public class Indexer {
             }
         }
 
-        List<Action> actions = new ArrayList<>();
+        List<CommandBuilder> actions = new ArrayList<>();
 
         int shotsPlanned = 0;
 
@@ -456,9 +450,9 @@ public class Indexer {
                 shotsPlanned++;
                 remaining.remove((Integer) holderIndex);
             }
-            actions.add(h == null ? new InstantAction(() -> {}) : h.kickResetAction());
+            actions.add(h == null ? instant(() -> {}) : h.kickResetAction());
             if (i < 2) {
-                actions.add(new SleepAction(motifShootSleep));
+                actions.add(waitMs(motifShootSleep * 1000));
             }
         }
 
@@ -466,7 +460,7 @@ public class Indexer {
             for (int i = 0; i < remaining.size(); i++) {
                 actions.add(holders[remaining.get(i)].kickResetAction());
                 if (i < remaining.size() - 1) {
-                    actions.add(new SleepAction(motifShootSleep));
+                    actions.add(waitMs(motifShootSleep * 1000));
                 }
             }
         }
@@ -475,7 +469,7 @@ public class Indexer {
             autoMotifPattern = rotateMotifPattern(getAutoMotifPattern(), shotsPlanned);
             autoMotifInitialized = true;
         }
-        return new SequentialAction(actions.toArray(new Action[0]));
+        return sequential(actions.toArray(new CommandBuilder[0]));
     }
 
     private static String rotateMotifPattern(String motifPattern, int offset) {
@@ -589,34 +583,33 @@ public class Indexer {
             return new InstantAction(this::reset);
         }
 
-        public Action kickResetAction() {
-            return new SequentialAction(
-                    new InstantAction(this::kick),
-                    new SleepAction(Indexer.kickerSleep),
-                    new InstantAction(this::reset)
+        public CommandBuilder kickResetAction() {
+            return sequential(
+                    instant(this::kick),
+                    waitMs(Indexer.kickerSleep*1000),
+                    instant(this::reset)
             );
         }
-        public Action resetFastAction() {
-            return new SequentialAction(
-                    new InstantAction(this::kick),
-                    new SleepAction(0.0001),
-                    new InstantAction(this::reset)
-            );
-        }
-
-        public Action longKickResetAction() {
-            return new SequentialAction(
-                    new InstantAction(this::kick),
-                    new SleepAction(Indexer.kickerSleep + rapidShootSleep),
-                    new InstantAction(this::reset)
+        public CommandBuilder resetFastAction() {
+            return sequential(
+                    instant(this::kick),
+                    waitMs(0.0001*1000),
+                    instant(this::reset)
             );
         }
 
-        public Action jiggleResetAction(double delta, double sleepSeconds) {
-            return new SequentialAction(
-                    new InstantAction(() -> jiggle(delta)),
-                    new SleepAction(sleepSeconds),
-                    new InstantAction(this::reset)
+        public CommandBuilder longKickResetAction() {
+            return sequential(
+                    instant(this::kick),
+                    waitMs(1000*(Indexer.kickerSleep + rapidShootSleep)),
+                     instant(this::reset));
+        }
+
+        public CommandBuilder jiggleResetAction(double delta, double sleepSeconds) {
+            return sequential(
+                    Commands.instant(() -> jiggle(delta)),
+                    waitMs(1000*sleepSeconds),
+                    Commands.instant(this::reset)
             );
         }
 

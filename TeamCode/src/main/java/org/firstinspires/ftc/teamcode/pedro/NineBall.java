@@ -32,17 +32,5 @@ public class NineBall extends AbstractAuto {
 
         initPaths();
 
-        Command autoCommand = Groups.sequential(
-                instant(() -> bot.enableShooter()),
-                waitMs(1000),
-                new RRToPedroCommand(bot.indexer.shootRapidFire())
-        );
-
-        Scheduler.schedule(
-                Groups.parallel(
-                        new RRToPedroCommand(bot.actionPeriodic()),
-                        autoCommand
-                )
-        );
     }
 }

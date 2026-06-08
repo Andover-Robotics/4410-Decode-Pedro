@@ -466,7 +466,7 @@ public final class MecanumDrive {
         clearBulkCache();
         PoseVelocity2d vel = localizer.update();
         poseHistory.add(localizer.getPose());
-        Bot.storedPose = localizer.getPose();
+//        Bot.storedPose = localizer.getPose();
 
         while (poseHistory.size() > 100) {
             poseHistory.removeFirst();

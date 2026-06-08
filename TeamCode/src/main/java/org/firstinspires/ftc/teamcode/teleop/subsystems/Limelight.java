@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.teleop.subsystems;
 
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.Pose2d;
+import com.pedropathing.geometry.Pose;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
@@ -24,7 +25,7 @@ public class Limelight {
     private final Limelight3A limelight;
     public LLResult llResult;
     public static Pose2d transformedBotPose = new Pose2d(0, 0, 0);
-    public static Pose2d llBotPose2d;
+    public static Pose llBotPose2d;
     public static Pose3D llBotPose = new Pose3D(
             new Position(DistanceUnit.INCH, 0, 0, 0, 0),
             new YawPitchRollAngles(AngleUnit.DEGREES, 0, 0, 0, 0)
@@ -175,8 +176,8 @@ public class Limelight {
             limelight.updateRobotOrientation(headingInput);
             if (llResult != null && llResult.isValid()) {
                 llBotPose = llResult.getBotpose_MT2();
-                llBotPose2d = Bot.pose3D2pose2D(llBotPose);
-                transformedBotPose = new Pose2d(-(llxoffset+llBotPose2d.position.x),-(llyoffset+llBotPose2d.position.y),Bot.drive.localizer.getPose().heading.log());
+                llBotPose2d = Bot.pose3D2Pose(llBotPose);
+                transformedBotPose = new Pose2d(-(llxoffset+llBotPose2d.getX()),-(llyoffset+llBotPose2d.getY()),Bot.drive.localizer.getPose().heading.log());
             }
         } else {
             if (llResult != null && llResult.isValid()

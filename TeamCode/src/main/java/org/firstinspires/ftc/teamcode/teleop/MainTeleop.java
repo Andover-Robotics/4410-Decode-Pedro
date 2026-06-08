@@ -8,6 +8,7 @@ import com.acmerobotics.roadrunner.Action;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 //import com.arcrobotics.ftclib.geometry.Vector2d;
+import com.pedropathing.ivy.Scheduler;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -117,15 +118,15 @@ public class MainTeleop extends LinearOpMode {
         if (!useStoredPose) {
             if (Bot.isFar()) {
                 if (Bot.isBlue()) {
-                    Bot.drive.localizer.setPose(Pos.initialFarBluePose);
+                    Bot.follower.setPose(Pos.initialFarBluePose);
                 } else {
-                    Bot.drive.localizer.setPose(Pos.initialFarRedPose);
+                    Bot.follower.setPose(Pos.initialFarRedPose);
                 }
             } else {
                 if (Bot.isBlue()) {
-                    Bot.drive.localizer.setPose(Pos.initialCloseBluePose);
+                    Bot.follower.setPose(Pos.initialCloseBluePose);
                 } else {
-                    Bot.drive.localizer.setPose(Pos.initialCloseRedPose);
+                    Bot.follower.setPose(Pos.initialCloseRedPose);
                 }
             }
         } else {
@@ -134,7 +135,8 @@ public class MainTeleop extends LinearOpMode {
 
         loopTimer.reset();
         bot.indexer.resetIndexer();
-        runningActions.add(bot.indexer.shootRapidFire());
+        Scheduler.reset();
+        Scheduler.schedule(bot.indexer.shootRapidFire());
 
         while (opModeIsActive() && !isStopRequested()) {
             TelemetryPacket packet = new TelemetryPacket();
@@ -206,35 +208,35 @@ public class MainTeleop extends LinearOpMode {
             }
 
             if (gp2.wasJustPressed(GamepadKeys.Button.A) && !gp1.isDown(GamepadKeys.Button.START)) {
-                runningActions.add(bot.indexer.shootMotif());
+                Scheduler.schedule(bot.indexer.shootMotif());
             }
 
             if (gp2.wasJustPressed(GamepadKeys.Button.DPAD_DOWN)) {
-                runningActions.add(bot.indexer.shootRapidFire());
+                Scheduler.schedule(bot.indexer.shootRapidFire());
             }
 
             if (gp2.wasJustPressed(GamepadKeys.Button.DPAD_RIGHT)) {
-                runningActions.add(bot.indexer.shootNotRapidFire());
+                Scheduler.schedule(bot.indexer.shootNotRapidFire());
             }
 
             if (gp2.wasJustPressed(GamepadKeys.Button.B) && !bot.shooting) {
-                runningActions.add(bot.indexer.shootRight());
+                Scheduler.schedule(bot.indexer.shootRight());
             }
 
             if (gp2.wasJustPressed(GamepadKeys.Button.X) && !bot.shooting) {
-                runningActions.add(bot.indexer.shootLeft());
+                Scheduler.schedule(bot.indexer.shootLeft());
             }
 
             if (gp2.wasJustPressed(GamepadKeys.Button.Y) && !bot.shooting) {
-                runningActions.add(bot.indexer.shootBack());
+                Scheduler.schedule(bot.indexer.shootBack());
             }
 
             if (gp2.wasJustPressed(GamepadKeys.Button.LEFT_BUMPER) && !bot.shooting) {
-                runningActions.add(bot.indexer.shootPurple());
+                Scheduler.schedule(bot.indexer.shootPurple());
             }
 
             if (gp2.wasJustPressed(GamepadKeys.Button.RIGHT_BUMPER) && !bot.shooting) {
-                runningActions.add(bot.indexer.shootGreen());
+                Scheduler.schedule(bot.indexer.shootGreen());
             }
 
             // FAILSAFES
@@ -270,7 +272,7 @@ public class MainTeleop extends LinearOpMode {
 
 
             if (gp1.wasJustPressed(GamepadKeys.Button.DPAD_RIGHT)) {
-                runningActions.add(bot.clearKickerJam());
+                Scheduler.schedule(bot.clearKickerJam());
             }
 
             if (gp1.wasJustPressed(GamepadKeys.Button.A)) {
@@ -302,7 +304,7 @@ public class MainTeleop extends LinearOpMode {
 
 
             if (Intake.intakeJammed && !intakeCurrentOverride){
-                runningActions.add(bot.clearIntakeJam());
+                Scheduler.schedule(bot.clearIntakeJam());
             }
 
             List<Action> newActions = new ArrayList<>();
@@ -369,7 +371,7 @@ public class MainTeleop extends LinearOpMode {
 //
 //            telemetry.addData("<big><b><u>Motif</big></b></u>", "<big><b> "+ Bot.motif + "</big></b></u>");
 //
-            telemetry.addData("Odom Pose", Math.round(Bot.storedPose.position.x) + " " + Math.round(Bot.storedPose.position.y) + " " + Math.round(Math.toDegrees(Bot.storedPose.heading.log())));
+            telemetry.addData("Odom Pose", Math.round(Bot.storedPose.getX()) + " " + Math.round(Bot.storedPose.getY()) + " " + Math.round(Math.toDegrees(Bot.storedPose.getHeading())));
             telemetry.addData("LL Edited Pose", Math.round(Limelight.transformedBotPose.position.x) + " " + Math.round(Limelight.transformedBotPose.position.y) + " " + Math.round(Limelight.llBotPose.getOrientation().getYaw() - 180));
 //            telemetry.addData("X", Bot.storedPose.position.x);
 //            telemetry.addData("Y", Bot.storedPose.position.y);
@@ -426,8 +428,11 @@ public class MainTeleop extends LinearOpMode {
 
             telemetry.update();
 
+            Scheduler.execute();
 
         }
+
+        Scheduler.reset();
     }
 
     // Driving

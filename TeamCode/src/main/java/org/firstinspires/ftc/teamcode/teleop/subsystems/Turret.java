@@ -3,9 +3,11 @@ package org.firstinspires.ftc.teamcode.teleop.subsystems;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.PoseVelocity2d;
+import com.pedropathing.math.Vector;
 import com.arcrobotics.ftclib.controller.PIDController;
 import com.arcrobotics.ftclib.hardware.motors.Motor;
 import com.arcrobotics.ftclib.hardware.motors.MotorEx;
+import com.pedropathing.geometry.Pose;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
@@ -65,8 +67,8 @@ public class Turret {
 
     public static boolean velComp = true, shooterOverride = false, deadzone = false;
 
-    public Pose2d pose;
-    public PoseVelocity2d velocity;
+    public Pose pose;
+    public Vector velocity;
     private final SRSHubs srsHubs;
 
     public Turret(OpMode opMode, SRSHubs srsHubs) {
@@ -159,12 +161,12 @@ public class Turret {
         pose = Bot.storedPose;
 
         // Robot heading in radians (CCW+)
-        double headingRad = pose.heading.log();
+        double headingRad = pose.getHeading();
 
         // Turret position in field frame:
         // "back" = negative X in robot frame, rotated into field frame
-        double turretX = pose.position.x - TURRET_OFFSET_BACK_IN * Math.cos(headingRad);
-        double turretY = pose.position.y - TURRET_OFFSET_BACK_IN * Math.sin(headingRad);
+        double turretX = pose.getX() - TURRET_OFFSET_BACK_IN * Math.cos(headingRad);
+        double turretY = pose.getY() - TURRET_OFFSET_BACK_IN * Math.sin(headingRad);
 
         // Vector from turret to target in field frame
         double dx = targetX - turretX;
@@ -199,16 +201,16 @@ public class Turret {
         double currentTurretDegs = pos * degsPerTick;
         if (currentTurretDegs < highLimit - 5 && currentTurretDegs > lowLimit + 5) {
             double time = calculateTime(dx, dy);
-            velocity = Bot.drive.localizer.getPoseVelocity();
+            velocity = Bot.follower.getVelocity();
 //        double dispX = velocity.linearVel.x * time;
 //        double dispY = velocity.linearVel.y * time;
 //        POS_TRACK_X = dx + dispX;
 //        POS_TRACK_Y = dy + dispY;
-            double heading = pose.heading.log();
+            double heading = pose.getHeading();
 
             // Convert robot-centric velocity to field frame
-            double velocityXField = velocity.linearVel.x * Math.cos(heading) - velocity.linearVel.y * Math.sin(heading);
-            double velocityYField = velocity.linearVel.x * Math.sin(heading) + velocity.linearVel.y * Math.cos(heading);
+            double velocityXField = (velocity.getMagnitude()*Math.cos(velocity.getTheta())) * Math.cos(heading) - (velocity.getMagnitude()*Math.sin(velocity.getTheta())) * Math.sin(heading);
+            double velocityYField = (velocity.getMagnitude()*Math.sin(velocity.getTheta())) * Math.sin(heading) + (velocity.getMagnitude()*Math.cos(velocity.getTheta())) * Math.cos(heading);
 
             // Offset the target opposite the robot's drift so that the added launch
             // velocity from the robot's motion lands on the goal.
@@ -253,10 +255,10 @@ public class Turret {
 
     public void periodic() {
         power = 0;
-        PoseVelocity2d poseVelocity = Bot.drive.localizer.getPoseVelocity();
+        Vector poseVelocity = Bot.follower.getVelocity();
         double robotSpeedInPerSec = 0.0;
         if (poseVelocity != null) {
-            robotSpeedInPerSec = Math.hypot(poseVelocity.linearVel.x, poseVelocity.linearVel.y);
+            robotSpeedInPerSec = poseVelocity.getMagnitude();
         }
         shooter.setRobotVelocityInPerSec(robotSpeedInPerSec);
 
@@ -268,7 +270,7 @@ public class Turret {
 
 //        // position tracking mode
         if (positionTracking) {
-            trackingTarget = aimAtGlobalPoint(Bot.targetPose.x, Bot.targetPose.y);
+            trackingTarget = aimAtGlobalPoint(Bot.targetPose.getX(), Bot.targetPose.getY());
             runToAngle(trackingTarget);
 ////            runToAngle(aimAtGlobalPoint(goalX, goalY));
             double errorDeg = Math.abs((setPoint - pos) * degsPerTick);
